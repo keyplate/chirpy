@@ -1,18 +1,30 @@
 package main
 
 import (
-    "fmt"
-    "net/http"
-    "sync/atomic"
+	"database/sql"
+	"fmt"
+    "github.com/keyplate/internal/database"
+	"log"
+	"net/http"
+	"sync/atomic"
+	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
-    reqCount atomic.Int32 
+    db *database.Queries
+    reqCount atomic.Int32
 }
 
 func main() {
+    connStr := "postgres://postgres:postgres@127.0.0.1:5432/chirpy?sslmode=disable"
+    db, err := sql.Open("postgres", connStr)
+    if err != nil {
+        log.Fatal(err)
+    }
+    dbQueries := database.New(db)
+
     serveMux := http.NewServeMux()
-    cfg := apiConfig{ reqCount: atomic.Int32{} }
+    cfg := apiConfig{ reqCount: atomic.Int32{}, db: dbQueries }
 
     appHandler :=  http.StripPrefix("/app/", http.FileServer(http.Dir(".")))
     serveMux.Handle("/app/", cfg.middlewareMetricsInc(appHandler))
@@ -22,7 +34,7 @@ func main() {
     serveMux.HandleFunc("POST /api/validate_chirp", handlerValidateChirp)
 
     server := http.Server{ Handler: serveMux, Addr: ":8080" }
-    err := server.ListenAndServe()
+    err = server.ListenAndServe()
     if err != nil {
         fmt.Printf("Error: %v", err) 
     }
