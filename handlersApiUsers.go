@@ -25,7 +25,7 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, req *http.Request
     defer req.Body.Close()
 
     dat, err := io.ReadAll(req.Body)
-    var usrEmail string
+    var usrEmail createUserBody
 
     if err != nil {
         respondWithError(w, 400, "Can not read body")
@@ -38,10 +38,10 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, req *http.Request
         return
     }
     
-    usrParams := database.CreateUserParams{ ID: uuid.New(), CreatedAt: time.Now(), UpdatedAt: time.Now(), Email: usrEmail }
+    usrParams := database.CreateUserParams{ ID: uuid.New(), CreatedAt: time.Now(), UpdatedAt: time.Now(), Email: usrEmail.Email }
     usr, err := cfg.db.CreateUser(req.Context(), usrParams)
     if err != nil {
-        respondWithError(w, 500, "Can not create user")
+        respondWithError(w, 500, err.Error())
         return
     }
 
