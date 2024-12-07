@@ -3,10 +3,12 @@ package main
 import (
 	"database/sql"
 	"fmt"
-    "github.com/keyplate/internal/database"
 	"log"
 	"net/http"
+	"os"
 	"sync/atomic"
+	"github.com/joho/godotenv"
+	"github.com/keyplate/chirpy/internal/database"
 	_ "github.com/lib/pq"
 )
 
@@ -16,7 +18,9 @@ type apiConfig struct {
 }
 
 func main() {
-    connStr := "postgres://postgres:postgres@127.0.0.1:5432/chirpy?sslmode=disable"
+    godotenv.Load()
+
+    connStr := os.Getenv("DB_URL") 
     db, err := sql.Open("postgres", connStr)
     if err != nil {
         log.Fatal(err)
