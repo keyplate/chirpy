@@ -1,11 +1,14 @@
 package main
 
 import (
-    "encoding/json"
-    "fmt"
-    "io"
+	"encoding/json"
+	"io"
 	"net/http"
+	"slices"
+	"strings"
 )
+
+var censoredWords = []string{"kerfuffle", "sharbert", "fornax"}
 
 type chirpBody struct {
     Body string `json:"body"`
@@ -33,35 +36,28 @@ func handlerValidateChirp(w http.ResponseWriter, req *http.Request) {
         return
     }
     
-    if !validateChirp(chirp.Body) {
+    if !validateChirpLength(chirp.Body) {
         respondWithError(w, 400, "Chirp is too long")
         return 
     }
-    respondWithJSON(w, 200, map[string]bool{"valid": true})
+    
+    cleanedChirp := validateAndReplaceProfane(chirp.Body)
+    respondWithJSON(w, 200, map[string]string{"cleaned_body": cleanedChirp})
 }
 
-func validateChirp(chirp string) bool {
+func validateChirpLength(chirp string) bool {
     if len(chirp) > 140 {
         return false
     }
     return true
 }
 
-func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, req *http.Request) {
-    w.Header().Set("Content-Type", "text/html; charset=utf-8")
-    hits := cfg.reqCount.Load()
-    io.WriteString(w, fmt.Sprintf(
-    `<html>
-      <body>
-        <h1>Welcome, Chirpy Admin</h1>
-        <p>Chirpy has been visited %d times!</p>
-      </body>
-    </html>`,
-    hits))
-    w.WriteHeader(http.StatusOK)
-}
-
-func (cfg *apiConfig) handlerReset(w http.ResponseWriter, req *http.Request) {
-    cfg.reqCount.Store(0)
-    w.WriteHeader(http.StatusOK)
+func validateAndReplaceProfane(chirp string) string {
+    words := strings.Split(chirp, " ")
+    for i, word := range(words) {
+        if slices.Contains(censoredWords, strings.ToLower(word)) {
+            words[i] = "****"
+        }
+    }
+    return strings.Join(words, " ")
 }
