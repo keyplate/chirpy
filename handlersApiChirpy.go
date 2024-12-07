@@ -21,10 +21,10 @@ func handlerHeatlthz(w http.ResponseWriter, req *http.Request) {
 }
 
 func handlerValidateChirp(w http.ResponseWriter, req *http.Request) {
-    body := req.Body
-    var chirp chirpBody
+    defer req.Body.Close()
 
-    data, err := io.ReadAll(body)
+    var chirp chirpBody
+    data, err := io.ReadAll(req.Body)
     if err != nil {
         respondWithError(w, 400, "Can not read body")
         return

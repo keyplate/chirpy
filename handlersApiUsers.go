@@ -22,22 +22,27 @@ type usrResponse struct {
 }
 
 func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, req *http.Request) {
+    defer req.Body.Close()
+
     dat, err := io.ReadAll(req.Body)
     var usrEmail string
 
     if err != nil {
         respondWithError(w, 400, "Can not read body")
+        return
     }
 
     err = json.Unmarshal(dat, &usrEmail)
     if err != nil {    
         respondWithError(w, 400, "Can not read body")
+        return
     }
     
     usrParams := database.CreateUserParams{ ID: uuid.New(), CreatedAt: time.Now(), UpdatedAt: time.Now(), Email: usrEmail }
     usr, err := cfg.db.CreateUser(req.Context(), usrParams)
     if err != nil {
         respondWithError(w, 500, "Can not create user")
+        return
     }
 
     usrResp := usrResponse{ ID: usr.ID, CreatedAt: usr.CreatedAt, UpdatedAt: usr.UpdatedAt, Email: usr.Email }
