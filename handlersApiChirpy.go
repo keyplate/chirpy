@@ -6,12 +6,25 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/keyplate/chirpy/internal/database"
 )
 
 var censoredWords = []string{"kerfuffle", "sharbert", "fornax"}
 
-type chirpBody struct {
+type chirpRequest struct {
     Body string `json:"body"`
+    UserID uuid.UUID `json:"user_id"`
+}
+
+type chirpResponse struct {
+    ID uuid.UUID `json:"id"`
+    CreatedAt time.Time `json:"created_at"`
+    UpdatedAt time.Time `json:"updated_at"`
+    Body string `json:"body"`
+    UserID uuid.UUID `json:"user_id"`
 }
 
 func handlerHeatlthz(w http.ResponseWriter, req *http.Request) {
@@ -20,29 +33,43 @@ func handlerHeatlthz(w http.ResponseWriter, req *http.Request) {
     w.WriteHeader(http.StatusOK)
 }
 
-func handlerValidateChirp(w http.ResponseWriter, req *http.Request) {
+func (cfg *apiConfig)handlerCreateChirp(w http.ResponseWriter, req *http.Request) {
     defer req.Body.Close()
 
-    var chirp chirpBody
+    var chirpRequest chirpRequest
     data, err := io.ReadAll(req.Body)
     if err != nil {
         respondWithError(w, 400, "Can not read body")
         return
     }
     
-    err = json.Unmarshal(data, &chirp)
+    err = json.Unmarshal(data, &chirpRequest)
     if err != nil {
         respondWithError(w, 400, "Can not decode body")
         return
     }
     
-    if !validateChirpLength(chirp.Body) {
+    if !validateChirpLength(chirpRequest.Body) {
         respondWithError(w, 400, "Chirp is too long")
         return 
     }
     
-    cleanedChirp := validateAndReplaceProfane(chirp.Body)
-    respondWithJSON(w, 200, map[string]string{"cleaned_body": cleanedChirp})
+    cleanedChirp := validateAndReplaceProfane(chirpRequest.Body)
+
+    createChirpParams := database.CreateChirpParams{
+        ID: uuid.New(),
+        CreatedAt: time.Now(),
+        UpdatedAt: time.Now(),
+        Body: cleanedChirp,
+        UserID: chirpRequest.UserID,
+    }
+    
+    chirp, err := cfg.db.CreateChirp(req.Context(), createChirpParams)
+    if err != nil {
+        respondWithError(w, 400, "Can not create chirp")
+    }
+
+    respondWithJSON(w, 201, toChirpResponse(chirp))
 }
 
 func validateChirpLength(chirp string) bool {
@@ -60,4 +87,14 @@ func validateAndReplaceProfane(chirp string) string {
         }
     }
     return strings.Join(words, " ")
+}
+
+func toChirpResponse(chirp database.Chirp) chirpResponse {
+    return chirpResponse{
+        ID: chirp.ID,
+        CreatedAt: chirp.CreatedAt,
+        UpdatedAt: chirp.UpdatedAt,
+        Body: chirp.Body,
+        UserID: chirp.UserID,
+    }
 }
