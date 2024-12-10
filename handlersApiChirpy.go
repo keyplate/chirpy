@@ -33,6 +33,20 @@ func handlerHeatlthz(w http.ResponseWriter, req *http.Request) {
     w.WriteHeader(http.StatusOK)
 }
 
+func (cfg *apiConfig)handlerGetChirps(w http.ResponseWriter, req *http.Request) {
+    chirps, err := cfg.db.GetAllChirps(req.Context())
+    if err != nil {
+        respondWithError(w, 500, "Something went wrong")
+        return
+    }
+
+    chirpResponseList := []chirpResponse{}
+    for _, chirp := range(chirps) {
+        chirpResponseList = append(chirpResponseList, toChirpResponse(chirp))
+    }
+    respondWithJSON(w, 200, chirpResponseList)
+}
+
 func (cfg *apiConfig)handlerCreateChirp(w http.ResponseWriter, req *http.Request) {
     defer req.Body.Close()
 
