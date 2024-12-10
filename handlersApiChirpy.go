@@ -47,6 +47,22 @@ func (cfg *apiConfig)handlerGetChirps(w http.ResponseWriter, req *http.Request) 
     respondWithJSON(w, 200, chirpResponseList)
 }
 
+func (cfg *apiConfig)handlerGetChirpByID(w http.ResponseWriter, req *http.Request) {
+    chirpID, err := uuid.Parse(req.PathValue("chirpID"))
+    if err != nil {
+        respondWithError(w, 400, "Chirp ID not valid")
+        return
+    }
+    
+    chirp, err := cfg.db.GetChirpByID(req.Context(), chirpID)
+    if err != nil {
+        respondWithError(w, 404, "Chirp not found")
+        return
+    }
+    
+    respondWithJSON(w, 200, toChirpResponse(chirp))
+}
+
 func (cfg *apiConfig)handlerCreateChirp(w http.ResponseWriter, req *http.Request) {
     defer req.Body.Close()
 

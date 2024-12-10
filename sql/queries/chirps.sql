@@ -11,3 +11,7 @@ VALUES(
 -- name: GetAllChirps :many
 SELECT * FROM chirps
 ORDER BY chirps.created_at;
+
+-- name: GetChirpByID :one
+SELECT * FROM chirps
+WHERE chirps.id = $1;
