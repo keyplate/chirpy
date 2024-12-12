@@ -2,9 +2,14 @@ package auth
 
 import (
 	"testing"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
+
+var secret string = "lzoAD+JoSY7HJrKmtuYDfB67sypYiWeStwDQhxVKzkfJ3++4Jkzoh63/kay5pG1DCs/je8s97ov+VfTMkzbcGA=="
 
 func TestPasswordHashed(t *testing.T) {
     pass := "password"
@@ -37,5 +42,76 @@ func TestInvalidHashVerification(t *testing.T) {
     err := CheckPasswordHash(pass, invalidHash)
     if err == nil {
         t.Fatalf("Password validated against invalid hash")
+    }
+}
+
+func TestCreateValidToken(t *testing.T) {
+    expiresIn, err := time.ParseDuration("10s")
+    if err != nil {
+        t.Fatalf("Error parsing duration\n")
+    }
+    userID, err := uuid.Parse("35c8d40b-f8d7-48d2-9211-33e1ce5aa272")
+    if err != nil {
+        t.Fatalf("Error parsing uuid\n")
+    }
+
+    token, err := MakeJWT(userID, secret, expiresIn)
+    if err != nil {
+        t.Fatalf("Error creating token\n")
+    }
+
+    parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+        return []byte(secret), nil
+    })
+    if err != nil || !parsedToken.Valid {
+        t.Fatalf("Token is not valid\n")
+    }
+}
+
+func TestCreateExpiredToken(t *testing.T) {
+    expiresIn := time.Duration(-10)
+    userID, err := uuid.Parse("35c8d40b-f8d7-48d2-9211-33e1ce5aa272")
+    if err != nil {
+        t.Fatalf("Error parsing uuid\n")
+    }
+
+    token, err := MakeJWT(userID, secret, expiresIn)
+    if err != nil {
+        t.Fatalf("Error creating token\n")
+    }
+
+    parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+        return []byte(secret), nil
+    })
+
+    if parsedToken.Valid {
+        t.Fatalf("Token is not valid\n")
+    }
+}
+
+func TestJWTValidates(t *testing.T) {
+    //Signed with var secret string
+    expiresIn, err := time.ParseDuration("10s")
+    if err != nil {
+        t.Fatalf("Error parsing duration\n")
+    }
+
+    expectedUserId := "35c8d40b-f8d7-48d2-9211-33e1ce5aa272"
+    claims := &jwt.RegisteredClaims{
+        Issuer: issuer,
+        IssuedAt: jwt.NewNumericDate(time.Now()),
+        ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiresIn)),
+        Subject: expectedUserId,
+    }
+    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+    tokenString, err := token.SignedString([]byte(secret))
+    if err != nil {
+        t.Fatalf(err.Error())
+    }
+
+    actualUserId, err := ValidateJWT(tokenString, secret)
+    if err != nil {
+        t.Fatalf("Actual userID is not equal expected expected: %v actual: %v\n", expectedUserId, actualUserId)
     }
 }
