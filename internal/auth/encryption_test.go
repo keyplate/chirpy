@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"net/http"
 	"testing"
 	"time"
 
@@ -113,5 +114,21 @@ func TestJWTValidates(t *testing.T) {
     actualUserId, err := ValidateJWT(tokenString, secret)
     if err != nil {
         t.Fatalf("Actual userID is not equal expected expected: %v actual: %v\n", expectedUserId, actualUserId)
+    }
+}
+
+func TestBerarerExtractedCorrectly(t *testing.T) {
+    bearerToken := "Bearer asertn23134enstraeinrcvmarssten231"
+    expected := "asertn23134enstraeinrcvmarssten231"
+    headers := http.Header{}
+    headers.Add("Authorization", bearerToken)
+
+    token, err := GetBearerToken(headers)
+    if err != nil {
+        t.Fatalf(err.Error())
+    }
+
+    if expected != token {
+        t.Fatalf("Expect %s token, actual %s -- Tokens must be equal", expected, token)
     }
 }
