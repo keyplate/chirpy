@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"time"
@@ -67,6 +69,17 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
         return uuid.Nil, err
     }
     return userId, err
+}
+
+func MakeRefreshToken() (string, error) {
+    randBytes := make([]byte, 32)
+    _, err := rand.Read(randBytes)
+    if err != nil {
+        return "", err
+    }
+
+    token := hex.EncodeToString(randBytes)
+    return token, nil
 }
 
 func GetBearerToken(headers http.Header) (string, error) {
