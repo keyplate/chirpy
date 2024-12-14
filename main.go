@@ -16,6 +16,7 @@ type apiConfig struct {
     db *database.Queries
     reqCount atomic.Int32
     platform string
+    secret string
 }
 
 func main() {
@@ -23,6 +24,7 @@ func main() {
 
     connStr := os.Getenv("DB_URL")
     platfrom := os.Getenv("PLATFORM")
+    secret := os.Getenv("JWT_SECRET")
     db, err := sql.Open("postgres", connStr)
     if err != nil {
         log.Fatal(err)
@@ -30,7 +32,7 @@ func main() {
     dbQueries := database.New(db)
 
     serveMux := http.NewServeMux()
-    cfg := apiConfig{ reqCount: atomic.Int32{}, db: dbQueries, platform: platfrom }
+    cfg := apiConfig{ reqCount: atomic.Int32{}, db: dbQueries, platform: platfrom, secret: secret }
 
     appHandler :=  http.StripPrefix("/app/", http.FileServer(http.Dir(".")))
     serveMux.Handle("/app/", cfg.middlewareMetricsInc(appHandler))

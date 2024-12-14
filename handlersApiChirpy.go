@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"slices"
@@ -10,13 +11,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/keyplate/chirpy/internal/database"
+    "github.com/keyplate/chirpy/internal/auth"
 )
 
 var censoredWords = []string{"kerfuffle", "sharbert", "fornax"}
 
 type chirpRequest struct {
     Body string `json:"body"`
-    UserID uuid.UUID `json:"user_id"`
 }
 
 type chirpResponse struct {
@@ -83,7 +84,13 @@ func (cfg *apiConfig)handlerCreateChirp(w http.ResponseWriter, req *http.Request
         respondWithError(w, 400, "Chirp is too long")
         return 
     }
-    
+   
+    userID, err := cfg.authorize(req.Header)
+    if err != nil {
+        respondWithError(w, 401, "Unauthorized")
+        return
+    }
+
     cleanedChirp := validateAndReplaceProfane(chirpRequest.Body)
 
     createChirpParams := database.CreateChirpParams{
@@ -91,7 +98,7 @@ func (cfg *apiConfig)handlerCreateChirp(w http.ResponseWriter, req *http.Request
         CreatedAt: time.Now(),
         UpdatedAt: time.Now(),
         Body: cleanedChirp,
-        UserID: chirpRequest.UserID,
+        UserID: userID,
     }
     
     chirp, err := cfg.db.CreateChirp(req.Context(), createChirpParams)
@@ -127,4 +134,18 @@ func toChirpResponse(chirp database.Chirp) chirpResponse {
         Body: chirp.Body,
         UserID: chirp.UserID,
     }
+}
+
+func (cfg *apiConfig) authorize(headers http.Header) (uuid.UUID, error) {
+    token, err := auth.GetBearerToken(headers)
+    if err != nil {
+        return uuid.Nil, fmt.Errorf("Could not retreive token")
+    }
+    
+    userID, err := auth.ValidateJWT(token, cfg.secret)
+    if err != nil {
+        return uuid.Nil, fmt.Errorf("JWT is invalid")
+    }
+    
+    return userID, nil
 }

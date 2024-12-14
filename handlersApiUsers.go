@@ -1,37 +1,46 @@
 package main
 
 import (
-    "encoding/json"
-    "io"
-    "net/http"
-    "time"
+	"encoding/json"
+	"io"
+	"net/http"
+	"time"
 
-    "github.com/keyplate/chirpy/internal/auth"
-    "github.com/keyplate/chirpy/internal/database"
-    "github.com/google/uuid"
+	"github.com/google/uuid"
+	"github.com/keyplate/chirpy/internal/auth"
+	"github.com/keyplate/chirpy/internal/database"
 )
 
-type createUserRequest struct {
+type createUsrRequest struct {
     Email string `json:"email"`
     Password string `json:"password"` 
 }
 
-type loginUserRequest struct {
+type loginUsrRequest struct {
     Email string `json:"email"`
     Password string `json:"password"`
+    ExpiresInSeconds int `json:"expires_in_seconds"`
 }
 
-type usrResponse struct {
+type loginUsrResponse struct {
     ID uuid.UUID `json:"id"`
     CreatedAt time.Time `json:"created_at"`
     UpdatedAt time.Time `json:"updated_at"`
     Email string `json:"email"`
+    Token string `json:"token"`
 }
+
+type createUsrResponse struct {
+    ID uuid.UUID `json:"id"`
+    CreatedAt time.Time `json:"created_at"`
+    UpdatedAt time.Time `json:"updated_at"`
+    Email string `json:"email"`
+} 
 
 func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, req *http.Request) {
     defer req.Body.Close()
 
-    var usrReq createUserRequest
+    var usrReq createUsrRequest
     dat, err := io.ReadAll(req.Body)
     if err != nil {
         respondWithError(w, 400, "Can not read body")
@@ -39,7 +48,7 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, req *http.Request
     }
 
     err = json.Unmarshal(dat, &usrReq)
-    if err != nil {    
+    if err != nil {
         respondWithError(w, 400, "Can not read body")
         return
     }
@@ -61,7 +70,7 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, req *http.Request
         return
     }
 
-    usrResp := usrResponse{ ID: usr.ID, CreatedAt: usr.CreatedAt, UpdatedAt: usr.UpdatedAt, Email: usr.Email }
+    usrResp := createUsrResponse{ ID: usr.ID, CreatedAt: usr.CreatedAt, UpdatedAt: usr.UpdatedAt, Email: usr.Email }
     respondWithJSON(w, 201, usrResp)
 }
 
@@ -69,7 +78,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
     defer req.Body.Close()
 
 
-    var loginReq loginUserRequest
+    var loginReq loginUsrRequest
     dat, err := io.ReadAll(req.Body)
     if err != nil {
         respondWithError(w, 400, "Can not read body")
@@ -94,10 +103,25 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
         return
     }
 
-    respondWithJSON(w, 200, usrResponse{
+    expiresIn := initExpirationDur(loginReq.ExpiresInSeconds)
+    token, err := auth.MakeJWT(usr.ID, cfg.secret, expiresIn)
+    if err != nil {
+        respondWithError(w, 401, "Unauthorized")
+    }
+
+    respondWithJSON(w, 200, loginUsrResponse{
         ID: usr.ID,
         CreatedAt: usr.CreatedAt,
         UpdatedAt: usr.UpdatedAt,
         Email: usr.Email,
+        Token: token,
     })
+}
+
+func initExpirationDur(seconds int) time.Duration {
+    hourInSec := 3600
+    if seconds <= 0 || seconds > hourInSec {
+        return time.Duration(float64(hourInSec) * float64(time.Second))
+    }
+    return time.Duration(float64(seconds) * float64(time.Second))
 }
