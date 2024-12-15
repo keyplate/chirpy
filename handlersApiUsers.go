@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -19,7 +21,6 @@ type createUsrRequest struct {
 type loginUsrRequest struct {
     Email string `json:"email"`
     Password string `json:"password"`
-    ExpiresInSeconds int `json:"expires_in_seconds"`
 }
 
 type loginUsrResponse struct {
@@ -28,6 +29,7 @@ type loginUsrResponse struct {
     UpdatedAt time.Time `json:"updated_at"`
     Email string `json:"email"`
     Token string `json:"token"`
+    RefreshToken string `json:"refresh_token"`
 }
 
 type createUsrResponse struct {
@@ -77,7 +79,6 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, req *http.Request
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
     defer req.Body.Close()
 
-
     var loginReq loginUsrRequest
     dat, err := io.ReadAll(req.Body)
     if err != nil {
@@ -103,10 +104,17 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
         return
     }
 
-    expiresIn := initExpirationDur(loginReq.ExpiresInSeconds)
+    expiresIn := initExpirationDur(3600)
     token, err := auth.MakeJWT(usr.ID, cfg.secret, expiresIn)
     if err != nil {
         respondWithError(w, 401, "Unauthorized")
+        return
+    }
+
+    refreshToken, err := cfg.issueRefreshToken(usr.ID, req.Context())
+    if err != nil {
+        respondWithError(w, 500, "Something went wrong")
+        return
     }
 
     respondWithJSON(w, 200, loginUsrResponse{
@@ -115,6 +123,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, req *http.Request) {
         UpdatedAt: usr.UpdatedAt,
         Email: usr.Email,
         Token: token,
+        RefreshToken: refreshToken.Token,
     })
 }
 
@@ -124,4 +133,32 @@ func initExpirationDur(seconds int) time.Duration {
         return time.Duration(float64(hourInSec) * float64(time.Second))
     }
     return time.Duration(float64(seconds) * float64(time.Second))
+}
+
+func (cfg *apiConfig)issueRefreshToken(usrID uuid.UUID, ctx context.Context) (database.RefreshToken, error) {
+    revokeDuration, err := time.ParseDuration("60d")
+    if err != nil {
+        return database.RefreshToken{}, err
+    }
+    revokeAt := time.Now().Add(revokeDuration)
+
+    refrethTokenStr, err := auth.MakeRefreshToken()
+    if err != nil {
+        return database.RefreshToken{}, err 
+    }
+    
+    createRefreshTokenParams := database.CreateRefreshTokenParams{
+        Token: refrethTokenStr,
+        CreatedAt: time.Now(),
+        UpdatedAt: time.Now(),
+        UserID: usrID,
+        RevokedAt: sql.NullTime{
+            Time: revokeAt,
+            Valid: true,
+        },
+    }
+
+    refreshToken, err := cfg.db.CreateRefreshToken(ctx, createRefreshTokenParams)
+    
+    return refreshToken, nil
 }
