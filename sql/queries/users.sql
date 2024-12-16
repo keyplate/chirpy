@@ -15,3 +15,9 @@ TRUNCATE TABLE users CASCADE;
 -- name: GetUserByEmail :one
 SELECT * FROM users
 WHERE email = $1;
+
+-- name: GetUserByToken :one
+SELECT users.* FROM users
+WHERE users.id = (
+    SELECT user_id FROM refresh_tokens WHERE refersh_tokens.token = $1
+);

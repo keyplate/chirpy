@@ -9,4 +9,13 @@ VALUES(
     $6
 )RETURNING *;
 
+-- name: GetRefreshToken :one
+SELECT * FROM refresh_tokens
+WHERE refresh_tokens.token = $1;
 
+-- name: MarkRevoked :one
+UPDATE refresh_tokens
+SET updated_at = $1, 
+    revoked_at =$2
+WHERE token = $3
+RETURNING *;

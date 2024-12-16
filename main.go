@@ -48,6 +48,9 @@ func main() {
     serveMux.HandleFunc("POST /api/users", cfg.handlerCreateUser)
     serveMux.HandleFunc("POST /api/login", cfg.handlerLogin)
 
+    serveMux.HandleFunc("POST /api/refresh", cfg.handlerRefersh)
+    serveMux.HandleFunc("POST /api/revoke", cfg.handlerRevoke)
+
     server := http.Server{ Handler: serveMux, Addr: ":8080" }
     err = server.ListenAndServe()
     if err != nil {
