@@ -136,7 +136,7 @@ func initExpirationDur(seconds int) time.Duration {
 }
 
 func (cfg *apiConfig)issueRefreshToken(usrID uuid.UUID, ctx context.Context) (database.RefreshToken, error) {
-    revokeDuration, err := time.ParseDuration("60d")
+    revokeDuration, err := time.ParseDuration("1440h") //60 days
     if err != nil {
         return database.RefreshToken{}, err
     }
@@ -152,10 +152,8 @@ func (cfg *apiConfig)issueRefreshToken(usrID uuid.UUID, ctx context.Context) (da
         CreatedAt: time.Now(),
         UpdatedAt: time.Now(),
         UserID: usrID,
-        RevokedAt: sql.NullTime{
-            Time: revokeAt,
-            Valid: true,
-        },
+        ExpiresAt: revokeAt,
+        RevokedAt: sql.NullTime{},
     }
 
     refreshToken, err := cfg.db.CreateRefreshToken(ctx, createRefreshTokenParams)
