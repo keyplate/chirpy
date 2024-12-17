@@ -20,6 +20,7 @@ type createUsrResponse struct {
     CreatedAt time.Time `json:"created_at"`
     UpdatedAt time.Time `json:"updated_at"`
     Email string `json:"email"`
+    IsChirpyRed bool `json:"is_chirpy_red"`
 } 
 
 
@@ -56,6 +57,11 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, req *http.Request
         return
     }
 
-    usrResp := createUsrResponse{ ID: usr.ID, CreatedAt: usr.CreatedAt, UpdatedAt: usr.UpdatedAt, Email: usr.Email }
-    respondWithJSON(w, 201, usrResp)
+    respondWithJSON(w, 201, createUsrResponse{ 
+        ID: usr.ID, 
+        CreatedAt: usr.CreatedAt,
+        UpdatedAt: usr.UpdatedAt,
+        Email: usr.Email,
+        IsChirpyRed: usr.IsChirpyRed,
+    })
 }

@@ -21,6 +21,7 @@ type updateUsrResponse struct {
     CreatedAt time.Time `json:"created_at"`
     UpdatedAt time.Time `json:"updated_at"`
     Email string `json:"email"`
+    IsChirpyRed bool `json:"is_chirpy_red"`
 } 
 
 func (cfg *apiConfig)handlerUpdateUser(w http.ResponseWriter, req *http.Request) {
@@ -71,5 +72,6 @@ func (cfg *apiConfig)handlerUpdateUser(w http.ResponseWriter, req *http.Request)
         CreatedAt: updatedUsr.CreatedAt,
         UpdatedAt: updatedUsr.UpdatedAt,
         Email: updatedUsr.Email,
+        IsChirpyRed: updatedUsr.IsChirpyRed,
     })
 }

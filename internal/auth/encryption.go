@@ -85,7 +85,16 @@ func MakeRefreshToken() (string, error) {
 func GetBearerToken(headers http.Header) (string, error) {
     prefix := "Bearer "
     authHeader := headers.Get("Authorization")
-    if len(authHeader) <  len(prefix){
+    if len(authHeader) < len(prefix) {
+        return "", fmt.Errorf("Auth header is empty")
+    }
+    return authHeader[len(prefix):], nil
+}
+
+func GetAPIKey(headers http.Header) (string, error) {
+    prefix := "ApiKey "
+    authHeader := headers.Get("Authorization")
+    if len(authHeader) < len(prefix) {
         return "", fmt.Errorf("Auth header is empty")
     }
     return authHeader[len(prefix):], nil
