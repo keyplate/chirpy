@@ -19,5 +19,18 @@ WHERE email = $1;
 -- name: GetUserByToken :one
 SELECT users.* FROM users
 WHERE users.id = (
-    SELECT user_id FROM refresh_tokens WHERE refersh_tokens.token = $1
+    SELECT user_id FROM refresh_tokens WHERE refresh_tokens.token = $1
 );
+
+-- name: UpdateUserEmailPassword :one
+UPDATE users SET
+    email = $1,
+    hashed_password = $2
+WHERE id = $3
+RETURNING *;
+
+-- name: UpdateIsChirpyRedUserTrue :one
+UPDATE users SET
+    is_chirpy_red = true
+WHERE id = $1
+RETURNING *;
