@@ -10,7 +10,12 @@ VALUES(
 
 -- name: GetAllChirps :many
 SELECT * FROM chirps
-ORDER BY chirps.created_at;
+ORDER BY chirps.created_at ASC;
+
+-- name: GetAllChirpsByUserID :many
+SELECT * FROM chirps
+WHERE user_id = $1
+ORDER BY chirps.created_at ASC;
 
 -- name: GetChirpByID :one
 SELECT * FROM chirps

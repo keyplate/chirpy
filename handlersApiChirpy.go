@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,8 +11,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/keyplate/chirpy/internal/auth"
 	"github.com/keyplate/chirpy/internal/database"
-    "github.com/keyplate/chirpy/internal/auth"
 )
 
 var censoredWords = []string{"kerfuffle", "sharbert", "fornax"}
@@ -29,7 +30,15 @@ type chirpResponse struct {
 }
 
 func (cfg *apiConfig)handlerGetChirps(w http.ResponseWriter, req *http.Request) {
-    chirps, err := cfg.db.GetAllChirps(req.Context())
+    var chirps []database.Chirp 
+    var err error
+    authorID := req.URL.Query().Get("author_id")
+
+    if len(authorID) > 0 {
+        chirps, err = cfg.GetAllChirpsByUserID(authorID, req.Context())
+    } else {
+        chirps, err = cfg.GetAllChirps(req.Context())
+    }
     if err != nil {
         respondWithError(w, 500, "Something went wrong")
         return
@@ -40,6 +49,26 @@ func (cfg *apiConfig)handlerGetChirps(w http.ResponseWriter, req *http.Request) 
         chirpResponseList = append(chirpResponseList, toChirpResponse(chirp))
     }
     respondWithJSON(w, 200, chirpResponseList)
+}
+
+func (cfg *apiConfig)GetAllChirps(ctx context.Context) ([]database.Chirp, error) {
+    chirps, err := cfg.db.GetAllChirps(ctx)
+    if err != nil {
+        return nil, err
+    }
+    return chirps, nil
+}
+
+func (cfg *apiConfig)GetAllChirpsByUserID(userID string, ctx context.Context) ([]database.Chirp, error) {
+    uuidUserID, err := uuid.Parse(userID)
+    if err != nil {
+        return nil, err
+    }
+    chirps, err := cfg.db.GetAllChirpsByUserID(ctx, uuidUserID)
+    if err != nil {
+        return nil, err
+    }
+    return chirps, nil
 }
 
 func (cfg *apiConfig)handlerGetChirpByID(w http.ResponseWriter, req *http.Request) {
