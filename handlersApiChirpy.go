@@ -32,7 +32,9 @@ type chirpResponse struct {
 func (cfg *apiConfig)handlerGetChirps(w http.ResponseWriter, req *http.Request) {
     var chirps []database.Chirp 
     var err error
+
     authorID := req.URL.Query().Get("author_id")
+    sort := req.URL.Query().Get("sort")
 
     if len(authorID) > 0 {
         chirps, err = cfg.GetAllChirpsByUserID(authorID, req.Context())
@@ -44,9 +46,14 @@ func (cfg *apiConfig)handlerGetChirps(w http.ResponseWriter, req *http.Request) 
         return
     }
 
+
     chirpResponseList := []chirpResponse{}
     for _, chirp := range(chirps) {
         chirpResponseList = append(chirpResponseList, toChirpResponse(chirp))
+    }
+
+    if sort == "desc" {
+         slices.Reverse(chirpResponseList)
     }
     respondWithJSON(w, 200, chirpResponseList)
 }
